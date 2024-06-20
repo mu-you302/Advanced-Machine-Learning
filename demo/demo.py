@@ -26,6 +26,15 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn
 
 
 def get_one_box(det_output, thrd=0.9):
+    """获取检测结果中得分最高的bbox
+
+    Args:
+        det_output (ndarray): key: boxes, scores
+        thrd (float, optional): 结果阈值. Defaults to 0.9.
+
+    Returns:
+        list : 置信度最高的bbox
+    """
     max_area = 0
     max_bbox = None
 
@@ -49,12 +58,17 @@ def get_one_box(det_output, thrd=0.9):
 
 
 def parse_args():
+    """解析命令行参数
+
+    Returns:
+        None
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", type=str, default="0", dest="gpu_ids")
     parser.add_argument("--img", type=str, default="input.png")
     args = parser.parse_args()
 
-    # test gpus
+    # 检测GPU设置是否可用
     if not args.gpu_ids:
         assert 0, print("Please set proper gpu ids")
 
@@ -71,28 +85,29 @@ args = parse_args()
 cfg.set_args(args.gpu_ids)
 cudnn.benchmark = True
 
-# snapshot load
-model_path = "./snapshot_6.pth.tar"
+# 加载模型权重
+model_path = "../models/snapshot_6.pth.tar"
 assert osp.exists(model_path), "Cannot find model at " + model_path
 print("Load checkpoint from {}".format(model_path))
 model = get_model("test")
-model = DataParallel(model).cuda()
-ckpt = torch.load(model_path)
+model = DataParallel(model).cuda()  # 多卡
+ckpt = torch.load(model_path)  # 加载模型
 model.load_state_dict(ckpt["network"], strict=False)
-model.eval()
+model.eval()  # 设置为评估模式
 
-# prepare input image
+# 输入图像预处理
 transform = transforms.ToTensor()
 img_path = args.img
 original_img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
 original_img_height, original_img_width = original_img.shape[:2]
 
+# 设置输出目录
 output_dir = os.path.basename(img_path)
 output_dir = output_dir.split(".")[0]
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
-# prepare bbox
+# 检测模型，采用FasterRCNN
 det_model = fasterrcnn_resnet50_fpn(pretrained=True).cuda().eval()
 det_transform = T.Compose([T.ToTensor()])
 det_input = det_transform(original_img).cuda()
@@ -106,20 +121,19 @@ img, img2bb_trans, bb2img_trans = generate_patch_image(
 img = transform(img.astype(np.float32)) / 255
 img = img.cuda()[None, :, :, :]
 
-# forward
+# 前向传播
 inputs = {"img": img}
 targets = {}
 meta_info = {}
 with torch.no_grad():
     out = model(inputs, targets, meta_info, "test")
-start_time = time.time()
-for i in range(100):
-    with torch.no_grad():
-        out = model(inputs, targets, meta_info, "test")
-print("Average runtime: ", (time.time() - start_time) / 100)
-a = input()
+# start_time = time.time()
+# for i in range(100):
+#     with torch.no_grad():
+#         out = model(inputs, targets, meta_info, "test")
+# print("Average runtime: ", (time.time() - start_time) / 100)    # 统计平均运行时间
 
-
+# 获取结果中的SMPL-X模型参数
 mesh = out["smplx_mesh_cam"].detach().cpu().numpy()[0]
 
 # 保存numpy array
@@ -131,10 +145,10 @@ mesh = out["smplx_mesh_cam"].detach().cpu().numpy()[0]
 #     vis_3d_skeleton(joint_img, np.ones((25, 1)), None, "3d_skeleton.jpg")
 #     np.save(fp, joint_img)
 
-# save mesh
+# 保存obj文件
 # save_obj(mesh, smpl_x.face, os.path.join(output_dir, "output.obj"))
 
-# render mesh
+# 人体3D渲染可视化，在裁剪图像上进行
 vis_img = img.cpu().numpy()[0].transpose(1, 2, 0).copy() * 255
 focal = [
     cfg.focal[0] / cfg.input_body_shape[1] * cfg.input_img_shape[1],
@@ -151,6 +165,7 @@ cv2.imwrite(
     os.path.join(output_dir, "render_cropped_img.jpg"), rendered_img[:, :, ::-1]
 )
 
+# 人体3D渲染可视化，在原始图像上进行
 vis_img = original_img.copy()
 focal = [
     cfg.focal[0] / cfg.input_body_shape[1] * bbox[2],
@@ -167,7 +182,7 @@ cv2.imwrite(
     os.path.join(output_dir, "render_original_img.jpg"), rendered_img[:, :, ::-1]
 )
 
-# save SMPL-X parameters
+# 保存结果中的身体手部姿势和形状参数
 root_pose = out["smplx_root_pose"].detach().cpu().numpy()[0]
 body_pose = out["smplx_body_pose"].detach().cpu().numpy()[0]
 lhand_pose = out["smplx_lhand_pose"].detach().cpu().numpy()[0]
