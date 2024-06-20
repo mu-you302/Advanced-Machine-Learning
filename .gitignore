@@ -5,6 +5,10 @@ __pycache__/
 
 # C extensions
 *.so
+*.jpg
+*.tar
+*.obj
+common/utils/human_model_files/*
 
 # Distribution / packaging
 .Python
