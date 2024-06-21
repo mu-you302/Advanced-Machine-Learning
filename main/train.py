@@ -11,6 +11,10 @@ def parse_args():
     parser.add_argument("--gpu", type=str, dest="gpu_ids", default="0,1")
     parser.add_argument("--lr", type=str, dest="lr", default=1e-5)
     parser.add_argument("--continue", dest="continue_train", action="store_true")
+    parser.add_argument("--end_epoch", type=int, dest="end_epoch", default=7)
+    parser.add_argument(
+        "--train_batch_size", type=int, dest="train_batch_size", default=24
+    )
     args = parser.parse_args()
 
     if not args.gpu_ids:

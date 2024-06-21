@@ -109,10 +109,24 @@ conda install -y -c conda-forge ffmpeg
 - vis 可视化结果
 
 ## 4. 快速开始
-首先下载预训练的模型权重：https://pan.baidu.com/s/1DoMUSBseuBiSIc5ku_DsJg?pwd=cdwp
+1. 首先下载预训练的模型权重：https://pan.baidu.com/s/1DoMUSBseuBiSIc5ku_DsJg?pwd=cdwp，放到`models`文件夹内
 
+2. 准备好 `common/utils/human_model_files` 中所需的人体模型文件，目录组织和下载方式上文已介绍
 
+3. 准备测试图片放入demo文件夹中，例如已有的 `test.png`
+
+4. 运行demo.py:
+```
+python demo.py --img test.png --gpu 0,1
+```
+
+运行完成后，会在demo文件夹下生成一个输入图片同名文件夹，结果包含：
+- output.obj(三维模型文件)
+- render_cropped_img.jpg（对目标人物裁剪后的渲染结果）
+- render_original_img.jpg（原始图像渲染结果）
+- smplx_param.json（结果中的SMPLX模型参数）
 
 ## 5. Train
+
 
 ## 6. Test
