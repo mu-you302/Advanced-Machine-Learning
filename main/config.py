@@ -9,8 +9,7 @@ class Config:
 
     ## 使用的数据集
     trainset_3d = ["Human36M"]
-    # trainset_2d = ["MSCOCO", "MPII"]  # 不包含3D注释
-    trainset_2d = []
+    trainset_2d = ["COCOWB"]  # 不包含3D注释
     testset = "EHF"
     # testset = "PW3D"
     # testset = "Human36M"

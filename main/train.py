@@ -10,11 +10,14 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", type=str, dest="gpu_ids", default="0,1")
     parser.add_argument("--lr", type=str, dest="lr", default=1e-5)
-    parser.add_argument("--continue", dest="continue_train", action="store_true")
+    parser.add_argument(
+        "--continue", dest="continue_train", default=False, action="store_true"
+    )
     parser.add_argument("--end_epoch", type=int, dest="end_epoch", default=7)
     parser.add_argument(
         "--train_batch_size", type=int, dest="train_batch_size", default=24
     )
+    parser.add_argument("--parts", default="whole")
     args = parser.parse_args()
 
     if not args.gpu_ids:
@@ -37,9 +40,10 @@ def main():
     # argument parse and create log
     args = parse_args()
     cfg.set_args(args.gpu_ids, args.lr, args.continue_train)
+    parts = args.parts
     cudnn.benchmark = True
 
-    trainer = Trainer()
+    trainer = Trainer(parts=parts)
     trainer._make_batch_generator()
     trainer._make_model()
 

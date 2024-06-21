@@ -204,7 +204,7 @@ def init_weights(m):
         pass
 
 
-def get_model(mode):
+def get_model_hand(mode):
     backbone = ResNetBackbone(cfg.resnet_type)
 
     hand_position_net = PositionNet("hand", cfg.hand_resnet_type)

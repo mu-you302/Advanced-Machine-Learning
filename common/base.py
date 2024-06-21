@@ -12,6 +12,7 @@ from logger import colorlogger
 from torch.nn.parallel.data_parallel import DataParallel
 from config import cfg
 from model import get_model
+from modelH import get_model_hand
 from dataset import MultipleDatasets
 
 # dynamic dataset import
@@ -47,8 +48,9 @@ class Base(object):
 
 
 class Trainer(Base):
-    def __init__(self):
+    def __init__(self, parts="whole"):
         super(Trainer, self).__init__(log_name="train_logs.txt")
+        self.parts = parts
 
     def get_optimizer(self, model):
         total_params = []
@@ -72,13 +74,14 @@ class Trainer(Base):
         self.logger.info("Write ckpt into {}".format(file_path))
 
     def load_model(self, model, optimizer):
-        model_file_list = glob.glob(osp.join(cfg.model_dir, "*.pth.tar"))
-        cur_epoch = max(
-            [
-                int(file_name[file_name.find("ckpt_") + 9 : file_name.find(".pth.tar")])
-                for file_name in model_file_list
-            ]
-        )
+        # model_file_list = glob.glob(osp.join(cfg.model_dir, "*.pth.tar"))
+        # cur_epoch = max(
+        #     [
+        #         int(file_name[file_name.find("ckpt_") + 9 : file_name.find(".pth.tar")])
+        #         for file_name in model_file_list
+        #     ]
+        # )
+        cur_epoch = 0
         ckpt_path = osp.join(cfg.model_dir, "ckpt_" + str(cur_epoch) + ".pth.tar")
         ckpt = torch.load(ckpt_path)
         start_epoch = ckpt["epoch"] + 1
@@ -159,27 +162,16 @@ class Trainer(Base):
     def _make_model(self):
         # prepare network
         self.logger.info("Creating graph and optimizer...")
-        model = get_model("train")
+        if self.parts == "whole":
+            model = get_model("train")
+        elif self.parts == "hand":
+            model = get_model_hand("train")
         model = DataParallel(model).cuda()
         optimizer = self.get_optimizer(model)
         if cfg.continue_train:
             start_epoch, model, optimizer = self.load_model(model, optimizer)
         else:
-            # 不完全的继续训练
-            cur_epoch = 6
-            ckpt_path = osp.join(cfg.model_dir, "ckpt_" + str(cur_epoch) + ".pth.tar")
-            ckpt = torch.load(ckpt_path)
-            start_epoch = ckpt["epoch"] + 1
-            # 去掉改过的module
-            hand_rotation_keys = []
-            for k in ckpt["network"].keys():
-                if k.startswith("module.hand_rotation_net"):
-                    hand_rotation_keys.append(k)
-            for k in hand_rotation_keys:
-                ckpt["network"].pop(k, None)
-
-            model.load_state_dict(ckpt["network"], strict=False)
-            self.logger.info("Load checkpoint from {}".format(ckpt_path))
+            start_epoch = 0
 
         model.train()
 
@@ -189,9 +181,10 @@ class Trainer(Base):
 
 
 class Tester(Base):
-    def __init__(self, test_epoch):
+    def __init__(self, test_epoch, pretrained):
         self.test_epoch = int(test_epoch)
         super(Tester, self).__init__(log_name="test_logs.txt")
+        self.pretrained = pretrained
 
     def _make_batch_generator(self):
         # data load and construct batch generator
@@ -209,15 +202,17 @@ class Tester(Base):
         self.batch_generator = batch_generator
 
     def _make_model(self):
-        model_path = os.path.join(cfg.model_dir, "ckpt_%d.pth.tar" % self.test_epoch)
-        assert os.path.exists(model_path), "Cannot find model at " + model_path
-        self.logger.info("Load checkpoint from {}".format(model_path))
+        # model_path = os.path.join(cfg.model_dir, "ckpt_%d.pth.tar" % self.test_epoch)
+        assert os.path.exists(self.pretrained), (
+            "Cannot find model at " + self.pretrained
+        )
+        self.logger.info("Load checkpoint from {}".format(self.pretrained))
 
         # prepare network
         self.logger.info("Creating graph...")
         model = get_model("test")
         model = DataParallel(model).cuda()
-        ckpt = torch.load(model_path)
+        ckpt = torch.load(self.pretrained)
         model.load_state_dict(ckpt["network"], strict=False)
         model.eval()
 

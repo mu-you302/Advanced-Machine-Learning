@@ -11,6 +11,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", type=str, dest="gpu_ids", default="0,1")
     parser.add_argument("--test_epoch", type=str, dest="test_epoch", default=6)
+    parser.add_argument(
+        "--test_batch_size", type=int, dest="test_batch_size", default=32
+    )
+    parser.add_argument("--pretrained_model", type=str, dest="pretrained_model")
     args = parser.parse_args()
 
     if not args.gpu_ids:
@@ -32,7 +36,7 @@ def main():
     cfg.set_args(args.gpu_ids)
     cudnn.benchmark = True
 
-    tester = Tester(args.test_epoch)
+    tester = Tester(args.test_epoch, args.pretrained_model)
     tester._make_batch_generator()
     tester._make_model()
 
@@ -54,14 +58,17 @@ def main():
 
         # evaluate
         cur_eval_result = tester._evaluate(out, cur_sample_idx)
-        for i in range(17):
-            eval_result[i]["mpjpe"] += cur_eval_result[i]["mpjpe"]
-            eval_result[i]["pa_mpjpe"] += cur_eval_result[i]["pa_mpjpe"]
-        # for k, v in cur_eval_result.items():
-        #     if k in eval_result:
-        #         eval_result[k] += v
-        #     else:
-        #         eval_result[k] = v
+        if cfg.testset == "Human36M":
+            for i in range(17):
+                eval_result[i]["mpjpe"] += cur_eval_result[i]["mpjpe"]
+                eval_result[i]["pa_mpjpe"] += cur_eval_result[i]["pa_mpjpe"]
+        else:
+            for k, v in cur_eval_result.items():
+                if k in eval_result:
+                    eval_result[k] += v
+                else:
+                    eval_result[k] = v
+
         cur_sample_idx += len(out)
 
     tester._print_eval_result(eval_result)

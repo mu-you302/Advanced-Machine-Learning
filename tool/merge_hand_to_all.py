@@ -1,15 +1,16 @@
 import torch
 
-model_all = torch.load("ckpt_6_all.pth.tar")  # module.hand_roi_net.backbone.
-model_hand = torch.load("ckpt_12_hand.pth.tar")  # module.hand_backbone.
+model_all = torch.load("../output/model_dump/ckpt_6_all.pth.tar")  # 全身模型
+model_hand = torch.load("../output/model_dump/ckpt_9_hand.pth.tar")  # 手部模型
 
 dump_keys = []
 for k, v in model_hand["network"].items():
-    if "module.hand_backbone" in k:
-        _k = k.split("module.hand_backbone.")[1]
+    if "module.backbone" in k:
+        _k = k.split("module.backbone.")[1]
         save_k = "module.hand_roi_net.backbone." + _k
         model_all["network"][save_k] = v.cpu()
 
+# 舍弃手部position和rotation的网络
 dump_keys = []
 for k in model_all["network"].keys():
     if "hand_position_net" in k or "hand_rotation_net" in k:
