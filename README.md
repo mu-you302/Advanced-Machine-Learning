@@ -78,12 +78,20 @@ conda install -y -c conda-forge ffmpeg
 |   |   |   |-- train2017  
 |   |   |   |-- val2017  
 |   |   |-- annotations 
-|   |-- 3DPW
+|   |-- PW3D
 |   |   |-- data
 |   |   |   |-- 3DPW_train.json
 |   |   |   |-- 3DPW_validation.json
 |   |   |   |-- 3DPW_test.json
 |   |   |-- imageFiles
+|   |-- FreiHAND
+|   |   |-- data
+|   |   |   |-- training
+|   |   |   |-- evaluation
+|   |   |   |-- freihand_train_coco.json
+|   |   |   |-- freihand_train_data.json
+|   |   |   |-- freihand_eval_coco.json
+|   |   |   |-- freihand_eval_data.json
 ```
 下面提供各数据集的百度网盘下载链接
 - EHF 数据集 https://pan.baidu.com/s/1mtKfEhyFc39f8S9GIlthtw?pwd=2bva
@@ -93,6 +101,7 @@ conda install -y -c conda-forge ffmpeg
   图像可从官网下载：https://cocodataset.org/#keypoints-2017
   https://pan.baidu.com/s/1Lsk5wQLYoEbtmvnBDSPvAQ?pwd=8tgm
 - 3DPW 数据集 https://pan.baidu.com/s/16zH3PsvbkSUUZzsQ3ZYEPw?pwd=bfte
+- FreiHand 数据集：https://pan.baidu.com/s/1tgJ8zBAufiamoDjC1LY-XA?pwd=cger
 
 ### 输出文件夹
 ```
@@ -109,7 +118,7 @@ conda install -y -c conda-forge ffmpeg
 - vis 可视化结果
 
 ## 4. 快速开始
-1. 首先下载预训练的模型权重：https://pan.baidu.com/s/1DoMUSBseuBiSIc5ku_DsJg?pwd=cdwp，放到`models`文件夹内
+1. 首先下载预训练的模型权重：https://pan.baidu.com/s/1DoMUSBseuBiSIc5ku_DsJg?pwd=cdwp ，放到`models`文件夹内
 
 2. 准备好 `common/utils/human_model_files` 中所需的人体模型文件，目录组织和下载方式上文已介绍
 
@@ -128,5 +137,53 @@ python demo.py --img test.png --gpu 0,1
 
 ## 5. Train
 
+1. 训练整个网络：
+```
+python train.py --gpu 0,1 --lr 1e-4 --end_epoch 7 --train_batch_size 16
+```
+命令行参数可以指定GPU、学习率、训练轮数，批大小
+
+在`main/config.py` 中，trainset_3d, trainset2d 指定了使用的3D，2D数据集，此时为Human3.6M，COCOWB
+
+2. 手部网络的特定训练
+   
+首先在在`main/config.py` 中修改使用的数据集为：
+```
+trainset_3d = ["FreiHand"]
+trainset_2d = []
+```
+然后在FreiHand上开始训练：
+```
+python train.py --gpu 0,1 --lr 1e-4 --end_epoch 10 --train_batch_size 16 --parts hand
+```
+
+3. 模型融合
+   
+切换到 `tool` 目录，运行：
+```
+python merge_hand_to_all.py
+```
+
+会自动将上面训练得到的两种模型进行融合，如果设置了与本文不同的epoch，需要自行修改其中的路径。
+
+4. 最后微调
+   
+重新指定`main/config.py`中的数据集：
+```
+trainset_3d = ["Human36M"]
+trainset_2d = ["COCOWB"]
+```
+开始微调：
+```
+python train.py --gpu 0,1 --lr 1e-5 --end_epoch 7 --train_batch_size 16 --continue
+```
+
 
 ## 6. Test
+在`main/config.py`中指定测试集 testset，可以选择 EHF，PW3D，Human36M
+
+```
+python test.py --gpu 0,1 --test_batch_size 24 --pretrained_model ../models/ckpt_6.pth.tar
+```
+
+## 7. 结果
