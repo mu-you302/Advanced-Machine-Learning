@@ -15,9 +15,8 @@ sys.path.insert(0, osp.join("..", "data"))
 sys.path.insert(0, osp.join("..", "common"))
 from config import cfg
 
-# from model import get_model
 from modelH import get_model
-from utils.preprocessing import load_img, process_bbox, generate_patch_image
+from utils.preprocessing import process_bbox, generate_patch_image
 from utils.human_models import smpl_x
 from utils.vis import render_mesh, save_obj, vis_3d_skeleton
 import json
