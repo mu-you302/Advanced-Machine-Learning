@@ -4,15 +4,16 @@ import sys
 import numpy as np
 
 
+# 配置设置，包括数据集、模型设置、输入/输出形状、训练和测试配置以及目录路径
 class Config:
 
-    ## dataset (use names in the `data` folder)
+    ## 使用的数据集
     trainset_3d = ["Human36M"]
-    # trainset_2d = ["MSCOCO", "MPII"]
+    # trainset_2d = ["MSCOCO", "MPII"]  # 不包含3D注释
     trainset_2d = []
-    # testset = 'EHF'
+    testset = "EHF"
     # testset = "PW3D"
-    testset = "Human36M"
+    # testset = "Human36M"
 
     ## model setting
     resnet_type = 50

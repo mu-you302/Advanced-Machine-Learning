@@ -7,6 +7,17 @@ import torchgeometry as tgm
 
 
 def cam2pixel(cam_coord, f, c):
+    """
+    将相机坐标转换为像素坐标
+
+    Args:
+      cam_coord: 表示 3D 空间中某个点的相机坐标, 形状为 (N, 3) 的 numpy 数组
+      f: 相机的焦距, [f_x, f_y]，分别表示相机沿 x 轴和 y 轴的焦距
+      c: 相机的主点，(c_x, c_y)，用于相机到像素的转换公式中，将坐标移到图像平面
+
+    Returns:
+      返回形状为 (n, 3) 的 numpy 数组
+    """
     x = cam_coord[:, 0] / cam_coord[:, 2] * f[0] + c[0]
     y = cam_coord[:, 1] / cam_coord[:, 2] * f[1] + c[1]
     z = cam_coord[:, 2]
@@ -14,6 +25,16 @@ def cam2pixel(cam_coord, f, c):
 
 
 def pixel2cam(pixel_coord, f, c):
+    """
+    将像素坐标转换为相机坐标
+
+    Args:
+      pixel_coord: 像素坐标格式为 [x, y, z]，其中 x 和 y 是像素坐标，z 是深度值
+      f,c: 相机的内参，f 是焦距，c 是主点
+
+    Returns:
+      返回相应的相机坐标
+    """
     x = (pixel_coord[:, 0] - c[0]) / f[0] * pixel_coord[:, 2]
     y = (pixel_coord[:, 1] - c[1]) / f[1] * pixel_coord[:, 2]
     z = pixel_coord[:, 2]
@@ -21,11 +42,17 @@ def pixel2cam(pixel_coord, f, c):
 
 
 def world2cam(world_coord, R, t):
+    """
+    将世界坐标转换为相机坐标
+    """
     cam_coord = np.dot(R, world_coord.transpose(1, 0)).transpose(1, 0) + t.reshape(1, 3)
     return cam_coord
 
 
 def cam2world(cam_coord, R, t):
+    """
+    将相机坐标转换为世界坐标
+    """
     world_coord = np.dot(
         np.linalg.inv(R), (cam_coord - t.reshape(1, 3)).transpose(1, 0)
     ).transpose(1, 0)
@@ -115,11 +142,11 @@ def rot6d_to_axis_angle(x):
     b1 = F.normalize(a1)
     b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
     b3 = torch.cross(b1, b2)
-    rot_mat = torch.stack((b1, b2, b3), dim=-1)  # 3x3 rotation matrix
+    rot_mat = torch.stack((b1, b2, b3), dim=-1)  # 3x3 旋转矩阵
 
     rot_mat = torch.cat(
         [rot_mat, torch.zeros((batch_size, 3, 1)).cuda().float()], 2
-    )  # 3x4 rotation matrix
+    )  # 3x4 旋转矩阵
     axis_angle = tgm.rotation_matrix_to_angle_axis(rot_mat).reshape(-1, 3)  # axis-angle
     axis_angle[torch.isnan(axis_angle)] = 0.0
     return axis_angle

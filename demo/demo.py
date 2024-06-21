@@ -85,7 +85,7 @@ cfg.set_args(args.gpu_ids)
 cudnn.benchmark = True
 
 # 加载模型权重
-model_path = "../models/snapshot_6.pth.tar"
+model_path = "../models/ckpt_6.pth.tar"
 assert osp.exists(model_path), "Cannot find model at " + model_path
 print("Load checkpoint from {}".format(model_path))
 model = get_model("test")

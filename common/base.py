@@ -58,7 +58,7 @@ class Trainer(Base):
         return optimizer
 
     def save_model(self, state, epoch):
-        file_path = osp.join(cfg.model_dir, "snapshot_{}.pth.tar".format(str(epoch)))
+        file_path = osp.join(cfg.model_dir, "ckpt_{}.pth.tar".format(str(epoch)))
 
         # do not save smplx layer weights
         dump_key = []
@@ -69,21 +69,17 @@ class Trainer(Base):
             state["network"].pop(k, None)
 
         torch.save(state, file_path)
-        self.logger.info("Write snapshot into {}".format(file_path))
+        self.logger.info("Write ckpt into {}".format(file_path))
 
     def load_model(self, model, optimizer):
         model_file_list = glob.glob(osp.join(cfg.model_dir, "*.pth.tar"))
         cur_epoch = max(
             [
-                int(
-                    file_name[
-                        file_name.find("snapshot_") + 9 : file_name.find(".pth.tar")
-                    ]
-                )
+                int(file_name[file_name.find("ckpt_") + 9 : file_name.find(".pth.tar")])
                 for file_name in model_file_list
             ]
         )
-        ckpt_path = osp.join(cfg.model_dir, "snapshot_" + str(cur_epoch) + ".pth.tar")
+        ckpt_path = osp.join(cfg.model_dir, "ckpt_" + str(cur_epoch) + ".pth.tar")
         ckpt = torch.load(ckpt_path)
         start_epoch = ckpt["epoch"] + 1
         model.load_state_dict(ckpt["network"], strict=False)
@@ -171,9 +167,7 @@ class Trainer(Base):
         else:
             # 不完全的继续训练
             cur_epoch = 6
-            ckpt_path = osp.join(
-                cfg.model_dir, "snapshot_" + str(cur_epoch) + ".pth.tar"
-            )
+            ckpt_path = osp.join(cfg.model_dir, "ckpt_" + str(cur_epoch) + ".pth.tar")
             ckpt = torch.load(ckpt_path)
             start_epoch = ckpt["epoch"] + 1
             # 去掉改过的module
@@ -215,9 +209,7 @@ class Tester(Base):
         self.batch_generator = batch_generator
 
     def _make_model(self):
-        model_path = os.path.join(
-            cfg.model_dir, "snapshot_%d.pth.tar" % self.test_epoch
-        )
+        model_path = os.path.join(cfg.model_dir, "ckpt_%d.pth.tar" % self.test_epoch)
         assert os.path.exists(model_path), "Cannot find model at " + model_path
         self.logger.info("Load checkpoint from {}".format(model_path))
 

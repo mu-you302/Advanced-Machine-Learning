@@ -4,7 +4,7 @@ from torch.utils.data.dataset import Dataset
 from config import cfg
 
 
-# 组合多个数据集，可以选择使它们具有相同的长度或保持其原始长度
+# 组合多个数据集，可以具有相同的长度或保持其原始长度
 class MultipleDatasets(Dataset):
     def __init__(self, dbs, make_same_len=True):
         self.dbs = dbs

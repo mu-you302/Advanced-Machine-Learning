@@ -1,0 +1,15 @@
+matplotlib==3.7.5
+numpy==1.23.1
+open3d==0.18.0
+opencv_python==4.9.0.80
+plyfile==1.0.3
+pycocotools==2.0.7
+pyrender==0.1.45
+scipy==1.13.1
+setuptools==69.2.0
+thop==0.1.1.post2209072238
+torch==1.7.1+cu110
+torchgeometry==0.1.2
+torchvision==0.8.2+cu110
+tqdm==4.66.2
+trimesh==4.3.0
