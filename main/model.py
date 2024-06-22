@@ -16,9 +16,10 @@ from utils.transforms import rot6d_to_axis_angle, restore_bbox
 from config import cfg
 import math
 import copy
-import time
 
 
+# 构建模型的类别，包括主干、位置网络、旋转网络、框网络、手部 ROI 网络和面部 ROI 网络
+# 完成了模型的初始化、前向传播和损失函数的计算
 class Model(nn.Module):
     def __init__(
         self,
@@ -45,24 +46,33 @@ class Model(nn.Module):
         self.face_roi_net = face_roi_net
         self.face_regressor = face_regressor
 
-        self.smplx_layer = copy.deepcopy(smpl_x.layer["neutral"]).cuda()
+        self.smplx_layer = copy.deepcopy(smpl_x.layer["neutral"]).cuda()  # SMPLX 模型
 
         self.coord_loss = CoordLoss()
         self.param_loss = ParamLoss()
 
         self.trainable_modules = [
-            # self.backbone,
-            # self.body_position_net,
+            self.backbone,
+            self.body_position_net,
             self.body_rotation_net,
-            # self.box_net,
-            # self.hand_roi_net,
+            self.box_net,
+            self.hand_roi_net,
             self.hand_position_net,
             self.hand_rotation_net,
-            # self.face_roi_net,
-            # self.face_regressor,
+            self.face_roi_net,
+            self.face_regressor,
         ]
 
     def get_camera_trans(self, cam_param):
+        """
+        根据给定的相机参数计算相机平移
+
+        Args:
+          cam_param: 相机参数，包括 x-y 平移和 z 平移。
+
+        Returns:
+          返回相机平移
+        """
         # camera translation
         t_xy = cam_param[:, :2]
         gamma = torch.sigmoid(cam_param[:, 2])  # apply sigmoid to make it positive
@@ -97,6 +107,23 @@ class Model(nn.Module):
         cam_trans,
         mode,
     ):
+        """
+        以各种姿势和参数作为输入，处理它们以获得3D坐标，并返回投影2D坐标、根相对3D坐标和网格坐标。
+
+        Args:
+          root_pose: 表示根在3D空间中的姿势，包括躯干、手臂、腿等身体部位的旋转和方向
+          body_pose: 表示身体在3D空间中的姿势
+          lhand_pose: 表示左手姿势的参数
+          rhand_pose: 输入数据中右手的姿势
+          jaw_pose: 下颌在 3D 空间中的姿势
+          shape:  SMPL-X 模型中使用的身体形状参数
+          expr: 以张量的形式表示人脸的表情
+          cam_trans: 表示相机在 3D 空间中的平移 用于调整相机相对于场景或被捕获物体的 3D 坐标的位置
+          mode: 确定操作模式
+
+        Returns:
+          返回三个张量：“joint_proj”、“joint_cam”和“mesh_cam”
+        """
         batch_size = root_pose.shape[0]
         zero_pose = (
             torch.zeros((1, 3)).float().cuda().repeat(batch_size, 1)
@@ -122,8 +149,8 @@ class Model(nn.Module):
             leye_pose=zero_pose,
             reye_pose=zero_pose,
             expression=torch.zeros((1, 10)).float().cuda().repeat(batch_size, 1),
-        )
-        # camera-centered 3D coordinate
+        )  # 生成 SMPLX 模型的输出
+        # 相机中心的 3D 坐标
         mesh_cam = output.vertices
         if (
             mode == "test" and cfg.testset == "AGORA"
@@ -132,7 +159,7 @@ class Model(nn.Module):
         else:
             joint_cam = output.joints[:, smpl_x.joint_idx, :]  # (B, 137, 3)
 
-        # project 3D coordinates to 2D space
+        # 投影 3D 坐标到 2D 空间
         if (
             mode == "train"
             and len(cfg.trainset_3d) == 1
@@ -156,12 +183,12 @@ class Model(nn.Module):
         y = y / cfg.input_body_shape[0] * cfg.output_hm_shape[1]
         joint_proj = torch.stack((x, y), 2)
 
-        # root-relative 3D coordinates
+        # 相对于根节点的 3D 坐标
         root_cam = joint_cam[:, smpl_x.root_joint_idx, None, :]
         joint_cam = joint_cam - root_cam
         mesh_cam = mesh_cam + cam_trans[:, None, :]  # for rendering
 
-        # left hand root (left wrist)-relative 3D coordinatese
+        # 左手根（左腕）相对于 3D 坐标
         lhand_idx = smpl_x.joint_part["lhand"]
         lhand_cam = joint_cam[:, lhand_idx, :]
         lwrist_cam = joint_cam[:, smpl_x.lwrist_idx, None, :]
@@ -175,7 +202,7 @@ class Model(nn.Module):
             1,
         )
 
-        # right hand root (right wrist)-relative 3D coordinatese
+        # 右手根（右腕）相对于 3D 坐标
         rhand_idx = smpl_x.joint_part["rhand"]
         rhand_cam = joint_cam[:, rhand_idx, :]
         rwrist_cam = joint_cam[:, smpl_x.rwrist_idx, None, :]
@@ -189,7 +216,7 @@ class Model(nn.Module):
             1,
         )
 
-        # face root (neck)-relative 3D coordinates
+        # 脸部根（颈部）相对于 3D 坐标
         face_idx = smpl_x.joint_part["face"]
         face_cam = joint_cam[:, face_idx, :]
         neck_cam = joint_cam[:, smpl_x.neck_idx, None, :]
@@ -215,7 +242,7 @@ class Model(nn.Module):
         # body
         body_joint_hm, body_joint_img = self.body_position_net(img_feat)
 
-        # hand/face bbox and feature extraction
+        # 手部/面部边界框和特征提取
         (
             lhand_bbox_center,
             lhand_bbox_size,
@@ -267,13 +294,8 @@ class Model(nn.Module):
             ),
             2,
         )
-        # the above line causes pixel-misalignment of hands. should be like below four lines
-        # lhand_joint_img_x = lhand_joint_img[:,:,0] / cfg.output_hand_hm_shape[2] * cfg.input_hand_shape[1]
-        # lhand_joint_img_x = cfg.input_hand_shape[1] - 1 - lhand_joint_img_x
-        # lhand_joint_img_x = lhand_joint_img_x / cfg.input_hand_shape[1] * cfg.output_hand_hm_shape[2]
-        # lhand_joint_img = torch.cat((lhand_joint_img_x[:,:,None], lhand_joint_img[:,:,1:]),2)
         rhand_joint_img = hand_joint_img[batch_size:, :, :]
-        # restore flipped left hand joint rotations
+        # 恢复翻转的左手关节旋转
         batch_size = hand_pose.shape[0] // 2
         lhand_pose = hand_pose[:batch_size, :].reshape(
             -1, len(smpl_x.orig_joint_part["lhand"]), 3
@@ -282,7 +304,7 @@ class Model(nn.Module):
             batch_size, -1
         )
         rhand_pose = hand_pose[batch_size:, :]
-        # restore flipped left hand features
+        # 恢复翻转的左手特征
         batch_size = hand_feat.shape[0] // 2
         lhand_feat = torch.flip(hand_feat[:batch_size, :], [3])
         rhand_feat = hand_feat[batch_size:, :]
@@ -324,11 +346,11 @@ class Model(nn.Module):
         )  # (B, J, 3)
 
         if mode == "train":
-            # loss functions
+            # 计算损失
             loss = {}
             loss["smplx_pose"] = self.param_loss(
                 pose, targets["smplx_pose"], meta_info["smplx_pose_valid"]
-            )  # computing loss with rotation matrix instead of axis-angle can avoid ambiguity of axis-angle. current: compute loss with axis-angle. should be fixed.
+            )
             loss["smplx_shape"] = self.param_loss(
                 shape, targets["smplx_shape"], meta_info["smplx_shape_valid"][:, None]
             )
@@ -371,7 +393,7 @@ class Model(nn.Module):
             #     meta_info["face_bbox_valid"][:, None],
             # )
 
-            # change hand target joint_img and joint_trunc according to hand bbox (cfg.output_hm_shape -> hand bbox space)
+            # 改变手部目标关节图像和截断关节根据手部边界框（cfg.output_hm_shape -> 手部边界框空间）
             for part_name, bbox in (("lhand", lhand_bbox), ("rhand", rhand_bbox)):
                 for coord_name, trunc_name in (
                     ("joint_img", "joint_trunc"),
@@ -437,7 +459,7 @@ class Model(nn.Module):
                         1,
                     )
 
-            # change hand projected joint coordinates according to hand bbox (cfg.output_hm_shape -> hand bbox space)
+            # 改变手部投影关节坐标根据手部边界框（cfg.output_hm_shape -> 手部边界框空间）
             for part_name, bbox in (("lhand", lhand_bbox), ("rhand", rhand_bbox)):
                 x = joint_proj[:, smpl_x.joint_part[part_name], 0]
                 y = joint_proj[:, smpl_x.joint_part[part_name], 1]
@@ -484,7 +506,7 @@ class Model(nn.Module):
                     1,
                 )
 
-            # change face projected joint coordinates according to face bbox (cfg.output_hm_shape -> face bbox space)
+            # 改变面部投影关节坐标根据面部边界框（cfg.output_hm_shape -> 面部边界框空间）
             coord = joint_proj[:, smpl_x.joint_part["face"], :]
             trans = []
             for bid in range(coord.shape[0]):
@@ -553,8 +575,7 @@ class Model(nn.Module):
                 bbox[:, 2] *= cfg.input_img_shape[1] / cfg.input_body_shape[1]
                 bbox[:, 3] *= cfg.input_img_shape[0] / cfg.input_body_shape[0]
 
-            # test output
-            out = {}
+            out = {}  # 输出
             out["img"] = inputs["img"]
             out["joint_img"] = joint_img
             out["joint_cam"] = joint_cam
@@ -581,6 +602,12 @@ class Model(nn.Module):
 
 
 def init_weights(m):
+    """
+    初始化神经网络中不同类型层的权重和偏差
+
+    Args:
+      m: 神经网络中的层
+    """
     try:
         if type(m) == nn.ConvTranspose2d:
             nn.init.normal_(m.weight, std=0.001)
@@ -598,6 +625,14 @@ def init_weights(m):
 
 
 def get_model(mode):
+    """
+    根据指定的模式（训练或测试）初始化并返回具有各种神经网络组件的模型
+
+    Args:
+      mode: 指定模型的模式，"train" 或 "test"
+    Returns:
+      使用指定的主干、位置网络、旋转网络、框网络、手部 ROI 网络和面部 ROI 网络创建的模型
+    """
     backbone = ResNetBackbone(cfg.resnet_type)
     body_position_net = PositionNet("body", cfg.resnet_type)
     body_rotation_net = RotationNet("body", cfg.resnet_type)

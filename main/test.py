@@ -8,6 +8,15 @@ from base import Tester
 
 
 def parse_args():
+    """
+    参数解析
+
+    Args:
+        --gpu: GPU编号
+        --test_epoch: 测试的epoch
+        --test_batch_size: 测试批大小
+        --pretrained_model: 预训练模型路径
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", type=str, dest="gpu_ids", default="0,1")
     parser.add_argument("--test_epoch", type=str, dest="test_epoch", default=6)

@@ -15,7 +15,7 @@ from model import get_model
 from modelH import get_model_hand
 from dataset import MultipleDatasets
 
-# dynamic dataset import
+# 动态导入数据集
 for i in range(len(cfg.trainset_3d)):
     exec("from " + cfg.trainset_3d[i] + " import " + cfg.trainset_3d[i])
 for i in range(len(cfg.trainset_2d)):
@@ -23,6 +23,7 @@ for i in range(len(cfg.trainset_2d)):
 exec("from " + cfg.testset + " import " + cfg.testset)
 
 
+# 用于创建批量生成器和模型的基类
 class Base(object):
     __metaclass__ = abc.ABCMeta
 
@@ -46,7 +47,7 @@ class Base(object):
     def _make_model(self):
         return
 
-
+# 训练器类，用于训练模型
 class Trainer(Base):
     def __init__(self, parts="whole"):
         super(Trainer, self).__init__(log_name="train_logs.txt")
@@ -66,7 +67,7 @@ class Trainer(Base):
         dump_key = []
         for k in state["network"].keys():
             if "smplx_layer" in k:
-                dump_key.append(k)
+                dump_key.append(k)  # 不保存smplx层权重
         for k in dump_key:
             state["network"].pop(k, None)
 
@@ -92,6 +93,10 @@ class Trainer(Base):
         return start_epoch, model, optimizer
 
     def set_lr(self, epoch):
+        """
+        根据当前epoch和预定义的衰减epoch和因素调整学习率
+        :param epoch: 当前epoch
+        """
         for e in cfg.lr_dec_epoch:
             if epoch < e:
                 break
@@ -109,7 +114,7 @@ class Trainer(Base):
         return cur_lr
 
     def _make_batch_generator(self):
-        # data load and construct batch generator
+        # 加载数据并构建批量生成器
         self.logger.info("Creating dataset...")
         trainset3d_loader = []
         for i in range(len(cfg.trainset_3d)):
@@ -160,7 +165,7 @@ class Trainer(Base):
         )
 
     def _make_model(self):
-        # prepare network
+        # 构建网络
         self.logger.info("Creating graph and optimizer...")
         if self.parts == "whole":
             model = get_model("train")
@@ -180,6 +185,7 @@ class Trainer(Base):
         self.optimizer = optimizer
 
 
+# 测试器类，用于测试模型
 class Tester(Base):
     def __init__(self, test_epoch, pretrained):
         self.test_epoch = int(test_epoch)
@@ -187,7 +193,7 @@ class Tester(Base):
         self.pretrained = pretrained
 
     def _make_batch_generator(self):
-        # data load and construct batch generator
+        # 加载数据并构建批量生成器
         self.logger.info("Creating dataset...")
         testset_loader = eval(cfg.testset)(transforms.ToTensor(), "test")
         batch_generator = DataLoader(
