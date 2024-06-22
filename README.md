@@ -147,6 +147,7 @@ python train.py --gpu 0,1 --lr 1e-4 --end_epoch 7 --train_batch_size 16
 
 2. 手部网络的特定训练
    
+
 首先在在`main/config.py` 中修改使用的数据集为：
 ```
 trainset_3d = ["FreiHand"]
@@ -159,6 +160,7 @@ python train.py --gpu 0,1 --lr 1e-4 --end_epoch 10 --train_batch_size 16 --parts
 
 3. 模型融合
    
+
 切换到 `tool` 目录，运行：
 ```
 python merge_hand_to_all.py
@@ -168,6 +170,7 @@ python merge_hand_to_all.py
 
 4. 最后微调
    
+
 重新指定`main/config.py`中的数据集：
 ```
 trainset_3d = ["Human36M"]
@@ -180,10 +183,20 @@ python train.py --gpu 0,1 --lr 1e-5 --end_epoch 7 --train_batch_size 16 --contin
 
 
 ## 6. Test
-在`main/config.py`中指定测试集 testset，可以选择 EHF，PW3D，Human36M
+在`main/config.py`中指定测试集 testset，可以选择 EHF，PW3D，Human36M 进行测试
 
 ```
 python test.py --gpu 0,1 --test_batch_size 24 --pretrained_model ../models/ckpt_6.pth.tar
 ```
 
 ## 7. 结果
+
+原始图片：
+
+<img src="./assets/test5.png" alt="test5" style="zoom:33%;" />
+
+重建结果：
+
+<img src="./assets/render_original_img.png" alt="render_original_img" style="zoom:33%;" />
+
+更多结果详见报告
