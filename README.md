@@ -3,8 +3,7 @@
 
 
 ## 1. 介绍
-本仓库为《高级机器学习》课程作业代码，实现了。。。
-
+本仓库为《高级机器学习》课程作业代码，实现了基于两阶段手部反馈的全身网格重建。
 
 ## 2. Python环境配置
 使用anaconda进行环境配置：
@@ -122,7 +121,7 @@ conda install -y -c conda-forge ffmpeg
 
 2. 准备好 `common/utils/human_model_files` 中所需的人体模型文件，目录组织和下载方式上文已介绍
 
-3. 准备测试图片放入demo文件夹中，例如已有的 `test.png`
+3. 准备测试图片放入demo文件夹中，demo文件夹下已经准备了输入样例 `test.png`
 
 4. 运行demo.py:
 ```
