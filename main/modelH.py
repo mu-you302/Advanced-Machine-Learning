@@ -39,9 +39,9 @@ class Model(nn.Module):
         ]
 
     def get_camera_trans(self, cam_param):
-        # camera translation
+        # 相机平移，相机坐标系
         t_xy = cam_param[:, :2]
-        gamma = torch.sigmoid(cam_param[:, 2])  # apply sigmoid to make it positive
+        gamma = torch.sigmoid(cam_param[:, 2])  # 应用sigmoid使其为正
         k_value = (
             torch.FloatTensor(
                 [
@@ -169,7 +169,7 @@ class Model(nn.Module):
             )
             return loss
         else:
-            out = {}
+            out = {}  # 输出结果
             out["cam_trans"] = cam_trans
             out["img"] = inputs["img"]
             out["joint_img"] = joint_img
@@ -188,6 +188,12 @@ class Model(nn.Module):
 
 
 def init_weights(m):
+    """
+    初始化神经网络中不同类型层的权重和偏差
+
+    Args:
+      m: 表示神经网络模型中的层
+    """
     try:
         if type(m) == nn.ConvTranspose2d:
             nn.init.normal_(m.weight, std=0.001)
@@ -205,6 +211,15 @@ def init_weights(m):
 
 
 def get_model_hand(mode):
+    """
+    根据指定的模式使用 ResNet 主干、手部位置网络和手部旋转网络初始化模型。
+
+    Args:
+      mode:  确定模型的使用模式
+
+    Returns:
+      返回一个由 ResNet 主干、手部位置网络和手部旋转网络组成的模型
+    """
     backbone = ResNetBackbone(cfg.resnet_type)
 
     hand_position_net = PositionNet("hand", cfg.hand_resnet_type)

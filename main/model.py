@@ -549,7 +549,7 @@ class Model(nn.Module):
             )
             return loss
         else:
-            # change hand output joint_img according to hand bbox
+            # 根据手部边界框更改手部输出 joint_img
             for part_name, bbox in (("lhand", lhand_bbox), ("rhand", rhand_bbox)):
                 joint_img[:, smpl_x.pos_joint_part[part_name], 0] *= (
                     (bbox[:, None, 2] - bbox[:, None, 0])
@@ -568,7 +568,7 @@ class Model(nn.Module):
                     bbox[:, None, 1] / cfg.input_body_shape[0] * cfg.output_hm_shape[1]
                 )
 
-            # change input_body_shape to input_img_shape
+            # 将手部边界框更改为输入图像空间
             for bbox in (lhand_bbox, rhand_bbox, face_bbox):
                 bbox[:, 0] *= cfg.input_img_shape[1] / cfg.input_body_shape[1]
                 bbox[:, 1] *= cfg.input_img_shape[0] / cfg.input_body_shape[0]
