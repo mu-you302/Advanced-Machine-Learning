@@ -156,6 +156,7 @@ trainset_2d = []
 ```
 python train.py --gpu 0,1 --lr 1e-4 --end_epoch 10 --train_batch_size 16 --parts hand
 ```
+通过指定`--parts`参数，模型会切换为手部训练模式。
 
 3. 模型融合
    
@@ -165,7 +166,7 @@ python train.py --gpu 0,1 --lr 1e-4 --end_epoch 10 --train_batch_size 16 --parts
 python merge_hand_to_all.py
 ```
 
-会自动将上面训练得到的两种模型进行融合，如果设置了与本文不同的epoch，需要自行修改其中的路径。
+会自动将上面训练得到的两个模型进行融合，如果设置了与本文不同的epoch，需要自行修改其中的路径。
 
 4. 最后微调
    
